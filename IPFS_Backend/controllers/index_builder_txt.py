@@ -1,6 +1,7 @@
 import sys
 import json
 import re
+import os
 
 ###----------------------------README----------------------------------------###
 
@@ -73,12 +74,21 @@ if len(sys.argv) != 2:
 # Get the array
 array_with_files = sys.argv[1]
 
+# convert argument to a list of dictionaries
+array_with_files = json.loads(array_with_files)
+
+# print(type(array_with_files))
+# print(type(array_with_files[0]))
+
 
 #######--------------------------Open-JSON-----------------------------------###
 
-with open('index/inverted_index.json', 'r') as index:
-    inverted_index = json.load(index)
+# with open('/Users/junweili/Desktop/Project_Github/Centralized-SE-for-IPFS/IPFS-Full-Stack-main/IPFS_Backend/controllers/index/inverted_index.json', 'r') as index:
+#     inverted_index = json.load(index)
 
+file_path = os.path.join(os.path.dirname(__file__), 'index', 'inverted_index.json')
+with open(file_path, 'r') as index:
+    inverted_index = json.load(index)
 
 
 ###--------------------Parsing-into-keywords-&-Index-Building----------------###
@@ -86,6 +96,8 @@ with open('index/inverted_index.json', 'r') as index:
 # traverse array and get name and keywords for all files
 # parse keywords
 # call index builder function for all files
+
+
 
 for i in array_with_files:
     file_name = i[list(i.keys())[0]]
@@ -97,7 +109,7 @@ for i in array_with_files:
 
 ###------------------------Dump-into-JSON------------------------------------###
 
-with open('index/inverted_index.json', 'w') as index:
+with open(file_path, 'w') as index:
     json.dump(inverted_index, index)
 
 

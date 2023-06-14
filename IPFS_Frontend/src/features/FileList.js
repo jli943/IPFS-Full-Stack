@@ -1,74 +1,65 @@
-
-// import React, { useState, useEffect } from 'react';
-// import axios from 'axios';
-
-// const FileList = () => {
-//   const [files, setFiles] = useState([]);
-//   const [selectedFiles, setSelectedFiles] = useState([]);
-
-//   useEffect(() => {
-//     const fetchFiles = async () => {
-//       const response = await axios.get('http://localhost:3001/files');
-//       setFiles(response.data);
-//     };
-
-//     fetchFiles();
-//   }, []);
-
-//   const handleFileSelect = event => {
-//     const fileName = event.target.name;
-//     const fileCID = event.target.value;
-
-//     if (event.target.checked) {
-//       setSelectedFiles(selectedFiles => [...selectedFiles, { name: fileName, cid: fileCID }]);
-//     } else {
-//       setSelectedFiles(selectedFiles => selectedFiles.filter(file => file.cid !== fileCID));
-//     }
-//   };
-
-//   const handleSubmit = async event => {
-//     event.preventDefault();
-
-//     const response = await axios.post('http://localhost:3001/files', selectedFiles);
-//     console.log(response.data);
-//   };
-
-//   return (
-//     <div>
-//       <form onSubmit={handleSubmit}>
-//         {files.map(file => (
-//           <div key={file.cid}>
-//             <input type="checkbox" name={file.name} value={file.cid} onChange={handleFileSelect} />
-//             <label>{file.name}</label>
-//           </div>
-//         ))}
-//         <button type="submit">Submit</button>
-//       </form>
-//     </div>
-//   );
-// };
-
-// export default FileList;
-
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+// const path = require('path');
+// const fs = require('fs');
+
 
 const FileList = () => {
   const [files, setFiles] = useState([]);
   const [selectedFiles, setSelectedFiles] = useState([]);
+  // const [submitedFiles, setSubmitedFiles] = useState([]);
 
+  // set the initial state from local storage or an empty array
+const [submitedFiles, setSubmitedFiles] = useState([]);
+
+//First render
   useEffect(() => {
     const fetchFiles = async () => {
       const response = await axios.get('http://localhost:3001/files');
       setFiles(response.data);
+
+      setFiles(files => {
+        return files.map(file => {
+            return {
+              ...file,
+              disabled: false
+            };
+          });
+        });
     };
 
     fetchFiles();
   }, []);
 
+  //Test
+  useEffect(() => {
+    console.log("selectedFiles", selectedFiles);
+  }, [selectedFiles]);
+
+   useEffect(() => {
+    console.log("submitedFiles", submitedFiles);
+    setSelectedFiles([]);
+
+    //If file in files has the same cid with the file in submitedFiles, then disable it
+    setFiles(files => {
+      return files.map(file => {
+        if (submitedFiles.some(submitedFile => submitedFile.cid === file.cid)) {
+          return {
+            ...file,
+            disabled: true
+          };
+        }
+
+        return file;
+      });
+    });
+
+  }, [submitedFiles]);
+
   const handleFileSelect = event => {
     const fileName = event.target.name;
     const fileCID = event.target.value;
+
 
     if (event.target.checked) {
       setSelectedFiles(selectedFiles => [...selectedFiles, { name: fileName, cid: fileCID }]);
@@ -78,10 +69,23 @@ const FileList = () => {
   };
 
   const handleSubmit = async event => {
+
     event.preventDefault();
+    setSubmitedFiles(selectedFiles);
+
+    const now = new Date();
+    const timestamp = now.toISOString();
+
+    // const logfile = path.join(__dirname, '...', '...', 'public', 'logfile.log');
+    // const log = `${timestamp} - handleSubmit function executed`;
+    console.log(now);
+    
+
 
     const response = await axios.post('http://localhost:3001/files', selectedFiles);
+
     console.log(response.data);
+
   };
 
   return (
@@ -96,6 +100,7 @@ const FileList = () => {
               value={file.cid}
               onChange={handleFileSelect}
               className="mr-2 border-gray-300 rounded"
+              disabled={file.disabled}
             />
             <label className="text-gray-800">{file.name}</label>
           </div>

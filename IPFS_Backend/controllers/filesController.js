@@ -2,9 +2,11 @@ const ipfs = require("ipfs-http-client");
 const fs = require('fs');
 const { spawn } = require('child_process');
 const path = require('path');
+const WebSocket = require("ws");
 
-const ipfsClient = ipfs.create('/ip4/127.0.0.1/tcp/5001');
-
+const ipfsClient = ipfs.create('/ip4/127.0.0.1/tcp/5001');                  // TO-DO: We need to make it so the user doesn't need to manually change the path to the json 
+                                                                              // (both python scripts need it) and the server's ip and port (index_sender.py needs it)
+                                                                              // this is currently hard coded
 
 const getAllFilesByNameAndCID = async (req, res) => {
     const localFiles = await ipfsClient.files.ls('/');
@@ -18,7 +20,7 @@ const getAllFilesByNameAndCID = async (req, res) => {
 
       res.json(files);
 
-    
+
 }
 
 const sendSelectedFilesContent = async (req, res) => {
@@ -47,49 +49,92 @@ const sendSelectedFilesContent = async (req, res) => {
             cidContents.push({ cid, contents});
         }
         console.log(cidContents);
-        runPythonScript(cidContents);
-
-
-        res.json(cidContents);
-
-        // const result = await ipfsClient.cat("QmWATWQ7fVPP2EFGu71UkfnqhYXDYH566qy47CnJDgvs8u")
-
-
-        // // create a string to append contents to
-        // let contents = ""
-
-
-        // // loop over incoming data
-        // for await(const item of result){
-        //     // turn string buffer to string and append to contents
-        //     contents += new TextDecoder().decode(item)
-        // }
-
-        // // remove null characters
-        // contents = contents.replace(/\0/g, "")
-
-        // // return results as a json
-        // console.log(contents)
-        // res.json({contents })
-
+      
+        sendInvertedJsonContent(cidContents);
 }
 
-function runPythonScript(data) {
-    const pythonScriptPath = path.join(__dirname, '..', 'controllers', 'index_builder_txt.py');
-    const pythonProcess = spawn('python', [pythonScriptPath, JSON.stringify(data)]);
-  
-    pythonProcess.stdout.on('data', (data) => {
-      console.log(`Python script stdout: ${data}`);
+async function sendInvertedJsonContent(cidContents) {
+  const invertedJsonContent = await runPythonScript(cidContents);
+  console.log(invertedJsonContent);
+
+  // Joaquin: Changed this to call the "index_sender.py" script instead of connecting with the server directly
+  jsonFilePath = path.join(__dirname, '..', 'controllers', 'index', 'inverted_index.json');
+  sendJsonFile(jsonFilePath)
+    .then(() => {
+      console.log("JSON file sent successfully.");
+    })
+    .catch((error) => {
+      console.error("Python script failed", error);
     });
   
+ 
+}
+
+// Joaquin: I edited this so that when called, the program won't continue until this finishes executing 
+const runPythonScript = async (data) => {
+  const pythonScriptPath = path.join(__dirname, '..', 'controllers', 'index_builder_txt.py');
+  const pythonProcess = spawn('python', [pythonScriptPath, JSON.stringify(data)]);
+
+  const promise = new Promise((resolve, reject) => {
+    let output = '';
+    pythonProcess.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+
     pythonProcess.stderr.on('data', (data) => {
       console.error(`Python script stderr: ${data}`);
+      reject(data);
     });
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python script exited with code ${code}`);
+        reject(code);
+      } else {
+        console.log(`Python script stdout: ${output}`);
+        resolve();
+      }
+    });
+  });
+
+  await promise;
+
+  const invertedFilrPath = path.join(__dirname, '..', 'controllers','index', 'inverted_index.json');
   
-    pythonProcess.on('exit', (code) => {
-      console.log(`Python script exited with code ${code}`);
+  const fileContent = fs.readFileSync(invertedFilrPath, "utf8");
+
+  return fileContent;
+};
+
+// Joaquin: Added this function to call the new python script in charge of sending the JSON file
+const sendJsonFile = async (jsonFilePath) => {
+  const pythonScriptPath = path.join(__dirname, '..', 'controllers', 'index_sender.py');
+  const pythonProcess = spawn('python', [pythonScriptPath, '-json_path', jsonFilePath]);
+
+  const promise = new Promise((resolve, reject) => {
+    let output = '';
+    pythonProcess.stdout.on('data', (data) => {
+      output += data.toString();
     });
-  }
+
+    pythonProcess.stderr.on('data', (data) => {
+      console.error(`Python script stderr: ${data}`);
+      reject(data);
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`Python script exited with code ${code}`);
+        reject(code);
+      } else {
+        console.log(`Python script stdout: ${output}`);
+        resolve();
+      }
+    });
+  });
+
+  await promise;
+};
 
 
 module.exports = { sendSelectedFilesContent, getAllFilesByNameAndCID }
