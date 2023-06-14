@@ -34,6 +34,11 @@ Open your IPFS system locally.
 Using IPFS API to get the CID first, and then using that CID and IPFS API to get file content through IPFS network
 Using Hooks in React to save the status of files
 
+User uses our client to submit their files which are already in IPFS to the index server and can search file through keywords instead of CID to get the file.
+![Getting Started](images/UI.png)
+
+Demo Video: https://youtu.be/9AtJJ45bP5U
+
 # 3.Feature Work
 
 Synchronization
